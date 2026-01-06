@@ -1,158 +1,147 @@
--- Usando Orion Lib por ser mais leve e estável
-local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+-- HUB UNIVERSAL SEM DEPENDÊNCIA EXTERNA (VERSÃO ROBUSTA)
+local ScreenGui = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local Title = Instance.new("TextLabel")
+local Content = Instance.new("ScrollingFrame")
+local UIListLayout = Instance.new("UIListLayout")
 
-local Window = OrionLib:MakeWindow({
-    Name = "💎 Premium Universal Hub", 
-    HidePremium = false, 
-    SaveConfig = true, 
-    ConfigFolder = "GeminiHub",
-    IntroText = "Carregando Gemini Hub..."
-})
+-- Configurações da Janela Principal
+ScreenGui.Name = "GeminiHub"
+ScreenGui.Parent = game:GetService("CoreGui")
+ScreenGui.ResetOnSpawn = false
 
--- Variáveis
-local Plrs = game:GetService("Players")
-local LP = Plrs.LocalPlayer
-local Mouse = LP:GetMouse()
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local VirtualUser = game:GetService("VirtualUser")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.Position = UDim2.new(0.3, 0, 0.3, 0)
+MainFrame.Size = UDim2.new(0, 250, 0, 350)
+MainFrame.Active = true
+MainFrame.Draggable = true -- Deixa o painel arrastável
 
-local AntiAFK = false
-local AntiFling = false
-local ClickTP = false
+Title.Name = "Title"
+Title.Parent = MainFrame
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+Title.Text = "💎 PREMIUM HUB (B p/ fechar)"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 14
+
+Content.Name = "Content"
+Content.Parent = MainFrame
+Content.Position = UDim2.new(0, 0, 0, 30)
+Content.Size = UDim2.new(1, 0, 1, -30)
+Content.BackgroundTransparency = 1
+Content.CanvasSize = UDim2.new(0, 0, 2, 0)
+
+UIListLayout.Parent = Content
+UIListLayout.Padding = UDim.new(0, 5)
+
+-- Funções de Atalho (Abrir/Fechar com B)
+game:GetService("UserInputService").InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.B then
+        MainFrame.Visible = not MainFrame.Visible
+    end
+end)
+
+-- FUNÇÃO: CRIAR BOTÕES FACILMENTE
+local function CreateButton(txt, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.9, 0, 0, 35)
+    btn.Parent = Content
+    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.Text = txt
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Position = UDim2.new(0.05, 0, 0, 0)
+    
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+-- [ SISTEMA DE BUSCA DE JOGADOR COM FOTO ]
+local TargetName = ""
 local TargetPlayer = nil
+local PlayerIcon = Instance.new("ImageLabel")
+PlayerIcon.Size = UDim2.new(0, 50, 0, 50)
+PlayerIcon.Parent = Content
+PlayerIcon.BackgroundTransparency = 1
 
--- [ FUNÇÃO ABRIR/FECHAR NA TECLA B ]
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == Enum.KeyCode.B then
-        if game:GetService("CoreGui"):FindFirstChild("Orion") then
-            local gui = game:GetService("CoreGui").Orion
-            gui.Enabled = not gui.Enabled
+local InputBox = Instance.new("TextBox")
+InputBox.Size = UDim2.new(0.9, 0, 0, 35)
+InputBox.Parent = Content
+InputBox.PlaceholderText = "Nick do Jogador..."
+InputBox.Text = ""
+
+InputBox.FocusLost:Connect(function()
+    for _, v in pairs(game.Players:GetPlayers()) do
+        if v.Name:lower():sub(1, #InputBox.Text) == InputBox.Text:lower() then
+            TargetPlayer = v
+            InputBox.Text = v.DisplayName
+            PlayerIcon.Image = "rbxthumb://type=AvatarHeadShot&id=" .. v.UserId .. "&w=150&h=150"
+            break
         end
     end
 end)
 
--- [ FUNÇÃO ANTI-AFK ]
-LP.Idled:Connect(function()
-    if AntiAFK then
-        VirtualUser:CaptureController()
-        VirtualUser:ClickButton2(Vector2.new())
-    end
+-- [ BOTÕES DE FUNÇÃO ]
+
+CreateButton("Velocidade (100)", function()
+    game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = 100
 end)
 
--- [ FUNÇÃO CLICK TP (CTRL + CLICK) ]
-Mouse.Button1Down:Connect(function()
-    if ClickTP and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
-        if Mouse.Target then
-            LP.Character:MoveTo(Mouse.Hit.p)
-        end
-    end
+CreateButton("Pulo (150)", function()
+    game.Players.LocalPlayer.Character.Humanoid.JumpPower = 150
 end)
 
--- [ ABA MOVIMENTAÇÃO ]
-local Tab1 = Window:MakeTab({ Name = "Movimentação", Icon = "rbxassetid://4483362458" })
-
-Tab1:AddSlider({
-    Name = "Velocidade (Speed)",
-    Min = 16, Max = 300, Default = 16, Color = Color3.fromRGB(255,255,255),
-    Callback = function(Value) LP.Character.Humanoid.WalkSpeed = Value end    
-})
-
-Tab1:AddToggle({
-    Name = "Click TP (Segure CTRL + Clique)",
-    Default = false,
-    Callback = function(Value) ClickTP = Value end
-})
-
-Tab1:AddToggle({
-    Name = "Noclip",
-    Default = false,
-    Callback = function(Value)
-        _G.Noclip = Value
-        RunService.Stepped:Connect(function()
-            if _G.Noclip and LP.Character then
-                for _, v in pairs(LP.Character:GetDescendants()) do
-                    if v:IsA("BasePart") then v.CanCollide = false end
-                end
-            end
-        end)
-    end
-})
-
--- [ ABA JOGADORES ]
-local Tab2 = Window:MakeTab({ Name = "Jogadores", Icon = "rbxassetid://4483362458" })
-
-Tab2:AddTextbox({
-    Name = "Nome do Jogador",
-    Default = "",
-    TextDisappear = false,
-    Callback = function(Text)
-        for _, v in pairs(Plrs:GetPlayers()) do
-            if v.Name:lower():sub(1, #Text) == Text:lower() then
-                TargetPlayer = v
-                OrionLib:MakeNotification({
-                    Name = "Alvo Encontrado!",
-                    Content = "Selecionado: " .. v.DisplayName,
-                    Image = "rbxthumb://type=AvatarHeadShot&id=" .. v.UserId .. "&w=150&h=150",
-                    Time = 5
-                })
-                break
-            end
-        end
-    end	  
-})
-
-Tab2:AddButton({
-    Name = "View / Unview (Alternar)",
-    Callback = function()
-        if workspace.CurrentCamera.CameraSubject == LP.Character.Humanoid then
-            if TargetPlayer and TargetPlayer.Character then
-                workspace.CurrentCamera.CameraSubject = TargetPlayer.Character.Humanoid
-            end
-        else
-            workspace.CurrentCamera.CameraSubject = LP.Character.Humanoid
-        end
-    end
-})
-
-Tab2:AddButton({
-    Name = "Teleportar ao Alvo",
-    Callback = function()
+CreateButton("Alternar View (Mesmo Botão)", function()
+    local cam = workspace.CurrentCamera
+    if cam.CameraSubject == game.Players.LocalPlayer.Character.Humanoid then
         if TargetPlayer and TargetPlayer.Character then
-            LP.Character.HumanoidRootPart.CFrame = TargetPlayer.Character.HumanoidRootPart.CFrame
+            cam.CameraSubject = TargetPlayer.Character.Humanoid
         end
+    else
+        cam.CameraSubject = game.Players.LocalPlayer.Character.Humanoid
     end
-})
+end)
 
--- [ ABA SEGURANÇA ]
-local Tab3 = Window:MakeTab({ Name = "Segurança", Icon = "rbxassetid://4483362458" })
+CreateButton("Teleportar ao Alvo", function()
+    if TargetPlayer and TargetPlayer.Character then
+        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = TargetPlayer.Character.HumanoidRootPart.CFrame
+    end
+end)
 
-Tab3:AddToggle({
-    Name = "Anti-AFK",
-    Default = false,
-    Callback = function(Value) AntiAFK = Value end
-})
+-- [ ANTI-AFK ]
+local antiAfkEnabled = false
+CreateButton("Ativar/Desativar Anti-AFK", function()
+    antiAfkEnabled = not antiAfkEnabled
+    print("Anti-AFK: " .. tostring(antiAfkEnabled))
+end)
 
-Tab3:AddToggle({
-    Name = "Anti-Fling (Anti-Rovibes)",
-    Default = false,
-    Callback = function(Value)
-        AntiFling = Value
-        RunService.Heartbeat:Connect(function()
-            if AntiFling and LP.Character then
-                for _, v in pairs(Plrs:GetPlayers()) do
-                    if v ~= LP and v.Character then
-                        for _, part in pairs(v.Character:GetDescendants()) do
-                            if part:IsA("BasePart") then
-                                part.CanCollide = false
-                                part.Velocity = Vector3.new(0,0,0)
-                            end
-                        end
+game.Players.LocalPlayer.Idled:Connect(function()
+    if antiAfkEnabled then
+        game:GetService("VirtualUser"):CaptureController()
+        game:GetService("VirtualUser"):ClickButton2(Vector2.new())
+    end
+end)
+
+-- [ ANTI-FLING ]
+local antiFling = false
+CreateButton("Anti-Fling (Rovibes)", function()
+    antiFling = not antiFling
+end)
+
+game:GetService("RunService").Heartbeat:Connect(function()
+    if antiFling then
+        for _, v in pairs(game.Players:GetPlayers()) do
+            if v ~= game.Players.LocalPlayer and v.Character then
+                for _, p in pairs(v.Character:GetDescendants()) do
+                    if p:IsA("BasePart") then
+                        p.CanCollide = false
+                        p.Velocity = Vector3.new(0,0,0)
                     end
                 end
             end
-        end)
+        end
     end
-})
+end)
 
-OrionLib:Init()
+print("Script Carregado com Sucesso!")
