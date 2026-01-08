@@ -1,77 +1,172 @@
--- Tentativa de forçar a renderização acima de tudo
-local function CreateUI()
-    local sg = Instance.new("ScreenGui")
-    -- Tentamos colocar no CoreGui, se falhar, vai pro PlayerGui
-    local success, err = pcall(function()
-        sg.Parent = game:GetService("CoreGui")
-    end)
-    if not success then
-        sg.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-    end
+--[[ 
+    CLONE KSX PANEL - Versão 4.5.2
+    Funcionalidades: Drag, Tecla B para abrir, Notificações e Comandos
+]]
+
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+
+-- CONFIGURAÇÃO DE CORES
+local COLORS = {
+    Background = Color3.fromRGB(35, 43, 53),
+    Sidebar = Color3.fromRGB(25, 30, 38),
+    Accent = Color3.fromRGB(50, 60, 75),
+    Text = Color3.fromRGB(240, 240, 240)
+}
+
+-- INTERFACE PRINCIPAL
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "KSX_Panel_Clone"
+ScreenGui.Parent = Player:WaitForChild("PlayerGui")
+ScreenGui.ResetOnSpawn = false
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 500, 0, 300)
+MainFrame.Position = UDim2.new(0.5, -250, 0.5, -150)
+MainFrame.BackgroundColor3 = COLORS.Background
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = ScreenGui
+MainFrame.Visible = true
+
+-- NOTIFICAÇÃO
+local function Notify(msg)
+    local n = Instance.new("TextLabel")
+    n.Size = UDim2.new(0, 250, 0, 30)
+    n.Position = UDim2.new(0.5, -125, 0.1, 0)
+    n.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    n.BackgroundTransparency = 0.5
+    n.TextColor3 = Color3.new(1, 1, 1)
+    n.Text = "[KSX]: " .. msg
+    n.Parent = ScreenGui
     
-    sg.Name = "GeminiUltra"
-    sg.DisplayOrder = 999999 -- Força ficar na frente de tudo
+    task.wait(2)
+    TweenService:Create(n, TweenInfo.new(0.5), {TextTransparency = 1, BackgroundTransparency = 1}):Play()
+    game:GetService("Debris"):AddItem(n, 0.5)
+end
 
-    local main = Instance.new("Frame", sg)
-    main.Size = UDim2.new(0, 220, 0, 300)
-    main.Position = UDim2.new(0.5, -110, 0.5, -150)
-    main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    main.BorderSizePixel = 2
-    main.Active = true
-    main.Draggable = true
+-- TÍTULO
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -100, 0, 30)
+Title.Position = UDim2.new(0, 100, 0, 0)
+Title.Text = "ksx's Panel v4.5.2"
+Title.TextColor3 = COLORS.Text
+Title.BackgroundColor3 = COLORS.Accent
+Title.Parent = MainFrame
 
-    local title = Instance.new("TextLabel", main)
-    title.Size = UDim2.new(1, 0, 0, 30)
-    title.Text = "GEMINI HUB [B]"
-    title.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
-    title.TextColor3 = Color3.new(1,1,1)
+-- SIDEBAR (Menu Lateral)
+local Sidebar = Instance.new("Frame")
+Sidebar.Size = UDim2.new(0, 100, 1, 0)
+Sidebar.BackgroundColor3 = COLORS.Sidebar
+Sidebar.Parent = MainFrame
 
-    local btnContainer = Instance.new("ScrollingFrame", main)
-    btnContainer.Size = UDim2.new(1, -10, 1, -40)
-    btnContainer.Position = UDim2.new(0, 5, 0, 35)
-    btnContainer.BackgroundTransparency = 1
-    btnContainer.CanvasSize = UDim2.new(0,0,2,0)
+local Layout = Instance.new("UIListLayout")
+Layout.Parent = Sidebar
 
-    local layout = Instance.new("UIListLayout", btnContainer)
-    layout.Padding = UDim.new(0, 5)
+local function CreateTabBtn(name)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 30)
+    btn.BackgroundColor3 = COLORS.Sidebar
+    btn.Text = name
+    btn.TextColor3 = COLORS.Text
+    btn.BorderSizePixel = 0
+    btn.Parent = Sidebar
+    return btn
+end
 
-    -- Função de Botão Simples
-    local function AddBtn(name, fn)
-        local b = Instance.new("TextButton", btnContainer)
-        b.Size = UDim2.new(1, 0, 0, 30)
-        b.Text = name
-        b.BackgroundColor3 = Color3.fromRGB(50,50,50)
-        b.TextColor3 = Color3.new(1,1,1)
-        b.MouseButton1Click:Connect(fn)
-    end
+local tabs = {"Home", "VIP", "Emphasis", "Character", "Target", "Animations", "Misc"}
+for _, name in pairs(tabs) do CreateTabBtn(name) end
 
-    -- FUNÇÕES
-    AddBtn("Speed 100", function() game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = 100 end)
-    AddBtn("Jump 150", function() game.Players.LocalPlayer.Character.Humanoid.JumpPower = 150 end)
-    
-    local afk = false
-    AddBtn("Anti-AFK: OFF", function(self) 
-        afk = not afk 
-        print("Anti-AFK:", afk)
-    end)
+-- CONTAINER DE BOTÕES (GRID)
+local Container = Instance.new("ScrollingFrame")
+Container.Size = UDim2.new(1, -110, 1, -40)
+Container.Position = UDim2.new(0, 105, 0, 35)
+Container.BackgroundTransparency = 1
+Container.CanvasSize = UDim2.new(0, 0, 2, 0)
+Container.Parent = MainFrame
 
-    -- Tecla B para fechar
-    game:GetService("UserInputService").InputBegan:Connect(function(i)
-        if i.KeyCode == Enum.KeyCode.B then
-            main.Visible = not main.Visible
-        end
-    end)
+local Grid = Instance.new("UIGridLayout")
+Grid.CellSize = UDim2.new(0, 120, 0, 30)
+Grid.Parent = Container
 
-    -- Anti-AFK Loop
-    game.Players.LocalPlayer.Idled:Connect(function()
-        if afk then
-            game:GetService("VirtualUser"):Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-            wait(1)
-            game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-        end
+-- FUNÇÕES DE LOGICA
+local function AddFunction(name, callback)
+    local btn = Instance.new("TextButton")
+    btn.Text = name
+    btn.BackgroundColor3 = COLORS.Accent
+    btn.TextColor3 = COLORS.Text
+    btn.Parent = Container
+    btn.MouseButton1Click:Connect(function()
+        callback()
+        Notify(name .. " Executado")
     end)
 end
 
--- Executa a criação
-pcall(CreateUI)
-warn("Gemini Hub tentou carregar!")
+-- TECLA B PARA ABRIR/FECHAR
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if not gpe and input.KeyCode == Enum.KeyCode.B then
+        MainFrame.Visible = not MainFrame.Visible
+    end
+end)
+
+-- SISTEMA DE ARRASTAR
+local dragging, dragInput, dragStart, startPos
+MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true; dragStart = input.Position; startPos = MainFrame.Position
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+end)
+
+--- LISTA DE FUNÇÕES (Baseado nas suas imagens) ---
+
+-- Aba Character
+AddFunction("Invisible", function()
+    local c = Player.Character
+    if c then for _, v in pairs(c:GetDescendants()) do if v:IsA("BasePart") or v:IsA("Decal") then v.Transparency = 1 end end end
+end)
+
+AddFunction("NoClip", function()
+    RunService.Stepped:Connect(function()
+        if Player.Character then
+            for _, v in pairs(Player.Character:GetDescendants()) do
+                if v:IsA("BasePart") then v.CanCollide = false end
+            end
+        end
+    end)
+end)
+
+AddFunction("Fly", function() Notify("Fly ativado (Requer script de voo)") end)
+
+-- Aba Target (Simulação das interações)
+AddFunction("Fling", function() Notify("Aguardando alvo...") end)
+AddFunction("Bang", function() Notify("Animação Bang iniciada") end)
+
+-- Aba Misc
+AddFunction("Anti-AFK", function()
+    local vu = game:GetService("VirtualUser")
+    Player.Idled:Connect(function() vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame) task.wait(1) vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame) end)
+end)
+
+AddFunction("Rejoin", function()
+    game:GetService("TeleportService"):Teleport(game.PlaceId, Player)
+end)
+
+AddFunction("Infinite Premium", function() Notify("Premium Ativado Visualmente") end)
+
+-- Exemplo de inputs de WalkSpeed/JumpPower
+AddFunction("Speed 100", function() Player.Character.Humanoid.WalkSpeed = 100 end)
+AddFunction("Jump 100", function() Player.Character.Humanoid.JumpPower = 100 end)
+
+Notify("Painel Carregado! Aperte 'B' para abrir.")
