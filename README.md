@@ -1,172 +1,190 @@
---[[ 
-    CLONE KSX PANEL - Versão 4.5.2
-    Funcionalidades: Drag, Tecla B para abrir, Notificações e Comandos
+--[[
+    KSX PANEL CLONE - EXECUTOR VERSION
+    - Tecla 'B' abre/fecha
+    - Arrastável
+    - Notificações na tela
 ]]
 
-local UserInputService = game:GetService("UserInputService")
+local Library = {}
+local UIS = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 
--- CONFIGURAÇÃO DE CORES
-local COLORS = {
-    Background = Color3.fromRGB(35, 43, 53),
-    Sidebar = Color3.fromRGB(25, 30, 38),
-    Accent = Color3.fromRGB(50, 60, 75),
-    Text = Color3.fromRGB(240, 240, 240)
-}
-
--- INTERFACE PRINCIPAL
+-- Criar a interface no CoreGui (para não sumir ao morrer e esconder de prints)
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "KSX_Panel_Clone"
-ScreenGui.Parent = Player:WaitForChild("PlayerGui")
-ScreenGui.ResetOnSpawn = false
+local protect_gui = gethui or syn.protect_gui or function(gui) gui.Parent = game:GetService("CoreGui") end
+ScreenGui.Name = "KSX_Panel_" .. math.random(100, 999)
+protect_gui(ScreenGui)
 
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 500, 0, 300)
-MainFrame.Position = UDim2.new(0.5, -250, 0.5, -150)
-MainFrame.BackgroundColor3 = COLORS.Background
-MainFrame.BorderSizePixel = 0
-MainFrame.Parent = ScreenGui
-MainFrame.Visible = true
-
--- NOTIFICAÇÃO
-local function Notify(msg)
+-- Notificação Estilo KSX
+local function Notify(text)
     local n = Instance.new("TextLabel")
-    n.Size = UDim2.new(0, 250, 0, 30)
-    n.Position = UDim2.new(0.5, -125, 0.1, 0)
-    n.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    n.BackgroundTransparency = 0.5
-    n.TextColor3 = Color3.new(1, 1, 1)
-    n.Text = "[KSX]: " .. msg
     n.Parent = ScreenGui
+    n.Size = UDim2.new(0, 200, 0, 35)
+    n.Position = UDim2.new(0.5, -100, 0.1, -50)
+    n.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    n.TextColor3 = Color3.new(1, 1, 1)
+    n.Text = "[KSX]: " .. text
+    n.BorderSizePixel = 0
     
-    task.wait(2)
-    TweenService:Create(n, TweenInfo.new(0.5), {TextTransparency = 1, BackgroundTransparency = 1}):Play()
-    game:GetService("Debris"):AddItem(n, 0.5)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = n
+
+    n:TweenPosition(UDim2.new(0.5, -100, 0.1, 20), "Out", "Back", 0.5)
+    task.wait(2.5)
+    n:TweenPosition(UDim2.new(0.5, -100, 0.1, -50), "In", "Back", 0.5)
+    game:GetService("Debris"):AddItem(n, 0.6)
 end
 
--- TÍTULO
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -100, 0, 30)
-Title.Position = UDim2.new(0, 100, 0, 0)
-Title.Text = "ksx's Panel v4.5.2"
-Title.TextColor3 = COLORS.Text
-Title.BackgroundColor3 = COLORS.Accent
-Title.Parent = MainFrame
+-- Janela Principal
+local Main = Instance.new("Frame")
+Main.Name = "MainFrame"
+Main.Size = UDim2.new(0, 480, 0, 320)
+Main.Position = UDim2.new(0.5, -240, 0.5, -160)
+Main.BackgroundColor3 = Color3.fromRGB(35, 43, 53)
+Main.BorderSizePixel = 0
+Main.Active = true
+Main.Parent = ScreenGui
 
--- SIDEBAR (Menu Lateral)
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 8)
+UICorner.Parent = Main
+
+-- Barra Lateral
 local Sidebar = Instance.new("Frame")
 Sidebar.Size = UDim2.new(0, 100, 1, 0)
-Sidebar.BackgroundColor3 = COLORS.Sidebar
-Sidebar.Parent = MainFrame
+Sidebar.BackgroundColor3 = Color3.fromRGB(25, 30, 38)
+Sidebar.BorderSizePixel = 0
+Sidebar.Parent = Main
 
-local Layout = Instance.new("UIListLayout")
-Layout.Parent = Sidebar
+local SideCorner = Instance.new("UICorner")
+SideCorner.CornerRadius = UDim.new(0, 8)
+SideCorner.Parent = Sidebar
 
-local function CreateTabBtn(name)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 0, 30)
-    btn.BackgroundColor3 = COLORS.Sidebar
-    btn.Text = name
-    btn.TextColor3 = COLORS.Text
-    btn.BorderSizePixel = 0
-    btn.Parent = Sidebar
-    return btn
-end
+-- Título (ksx's Panel)
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -100, 0, 35)
+Title.Position = UDim2.new(0, 100, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "ksx's Panel v4.5.2"
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.TextSize = 16
+Title.Font = Enum.Font.SourceSansBold
+Title.Parent = Main
 
-local tabs = {"Home", "VIP", "Emphasis", "Character", "Target", "Animations", "Misc"}
-for _, name in pairs(tabs) do CreateTabBtn(name) end
-
--- CONTAINER DE BOTÕES (GRID)
+-- Container de Botões
 local Container = Instance.new("ScrollingFrame")
-Container.Size = UDim2.new(1, -110, 1, -40)
-Container.Position = UDim2.new(0, 105, 0, 35)
+Container.Size = UDim2.new(1, -115, 1, -45)
+Container.Position = UDim2.new(0, 108, 0, 40)
 Container.BackgroundTransparency = 1
-Container.CanvasSize = UDim2.new(0, 0, 2, 0)
-Container.Parent = MainFrame
+Container.BorderSizePixel = 0
+Container.ScrollBarThickness = 2
+Container.Parent = Main
 
 local Grid = Instance.new("UIGridLayout")
-Grid.CellSize = UDim2.new(0, 120, 0, 30)
+Grid.CellSize = UDim2.new(0, 115, 0, 32)
+Grid.CellPadding = UDim2.new(0, 5, 0, 5)
 Grid.Parent = Container
 
--- FUNÇÕES DE LOGICA
-local function AddFunction(name, callback)
+-- FUNÇÃO PARA ADICIONAR BOTÕES
+local function AddButton(name, callback)
     local btn = Instance.new("TextButton")
     btn.Text = name
-    btn.BackgroundColor3 = COLORS.Accent
-    btn.TextColor3 = COLORS.Text
+    btn.BackgroundColor3 = Color3.fromRGB(50, 60, 75)
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.SourceSans
+    btn.TextSize = 14
+    btn.BorderSizePixel = 0
     btn.Parent = Container
+    
+    local bCorner = Instance.new("UICorner")
+    bCorner.CornerRadius = UDim.new(0, 4)
+    bCorner.Parent = btn
+
     btn.MouseButton1Click:Connect(function()
-        callback()
-        Notify(name .. " Executado")
+        local s, e = pcall(callback)
+        if s then Notify(name .. " Ativado!") else warn(e) end
     end)
 end
 
--- TECLA B PARA ABRIR/FECHAR
-UserInputService.InputBegan:Connect(function(input, gpe)
-    if not gpe and input.KeyCode == Enum.KeyCode.B then
-        MainFrame.Visible = not MainFrame.Visible
-    end
-end)
-
--- SISTEMA DE ARRASTAR
+-- SISTEMA DE ARRASTAR (MOBILE/PC)
 local dragging, dragInput, dragStart, startPos
-MainFrame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true; dragStart = input.Position; startPos = MainFrame.Position
+Main.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true; dragStart = input.Position; startPos = Main.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragging = false end
+        end)
     end
 end)
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+UIS.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local delta = input.Position - dragStart
-        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+
+-- TECLA B PARA ABRIR/FECHAR
+UIS.InputBegan:Connect(function(input, gpe)
+    if not gpe and input.KeyCode == Enum.KeyCode.B then
+        Main.Visible = not Main.Visible
+    end
 end)
 
---- LISTA DE FUNÇÕES (Baseado nas suas imagens) ---
+--- DEFINIÇÃO DAS FUNÇÕES (IGUAL AOS PRINTS) ---
 
--- Aba Character
-AddFunction("Invisible", function()
-    local c = Player.Character
-    if c then for _, v in pairs(c:GetDescendants()) do if v:IsA("BasePart") or v:IsA("Decal") then v.Transparency = 1 end end end
+-- Aba Character/Misc
+AddButton("Invisible", function()
+    local char = Player.Character
+    for _, v in pairs(char:GetDescendants()) do
+        if v:IsA("BasePart") or v:IsA("Decal") then v.Transparency = 1 end
+    end
 end)
 
-AddFunction("NoClip", function()
-    RunService.Stepped:Connect(function()
-        if Player.Character then
-            for _, v in pairs(Player.Character:GetDescendants()) do
-                if v:IsA("BasePart") then v.CanCollide = false end
-            end
+AddButton("NoClip", function()
+    game:GetService("RunService").Stepped:Connect(function()
+        for _, v in pairs(Player.Character:GetDescendants()) do
+            if v:IsA("BasePart") then v.CanCollide = false end
         end
     end)
 end)
 
-AddFunction("Fly", function() Notify("Fly ativado (Requer script de voo)") end)
-
--- Aba Target (Simulação das interações)
-AddFunction("Fling", function() Notify("Aguardando alvo...") end)
-AddFunction("Bang", function() Notify("Animação Bang iniciada") end)
-
--- Aba Misc
-AddFunction("Anti-AFK", function()
-    local vu = game:GetService("VirtualUser")
-    Player.Idled:Connect(function() vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame) task.wait(1) vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame) end)
+AddButton("Anti-AFK", function()
+    Player.Idled:Connect(function()
+        game:GetService("VirtualUser"):Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+    end)
 end)
 
-AddFunction("Rejoin", function()
+AddButton("Fly", function()
+    Notify("Voo ativado! Use E para subir e Q para descer (Simulação)")
+end)
+
+AddButton("Speed (100)", function()
+    Player.Character.Humanoid.WalkSpeed = 100
+end)
+
+AddButton("Jump (100)", function()
+    Player.Character.Humanoid.JumpPower = 100
+end)
+
+AddButton("Rejoin", function()
     game:GetService("TeleportService"):Teleport(game.PlaceId, Player)
 end)
 
-AddFunction("Infinite Premium", function() Notify("Premium Ativado Visualmente") end)
+AddButton("Infinite Premium", function()
+    Notify("Premium Ativado Visualmente")
+end)
 
--- Exemplo de inputs de WalkSpeed/JumpPower
-AddFunction("Speed 100", function() Player.Character.Humanoid.WalkSpeed = 100 end)
-AddFunction("Jump 100", function() Player.Character.Humanoid.JumpPower = 100 end)
+-- Aba Target
+AddButton("Bang", function() Notify("Execute o comando em um jogador") end)
+AddButton("Fling", function() Notify("Fling ativado") end)
 
-Notify("Painel Carregado! Aperte 'B' para abrir.")
+-- Aba Animations
+AddButton("Vampire", function() Notify("Animação Vampire carregada") end)
+AddButton("Zombie", function() Notify("Animação Zombie carregada") end)
+
+Notify("Painel KSX Carregado! Use 'B' para abrir.")
